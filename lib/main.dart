@@ -20,7 +20,6 @@ class MyApp extends StatelessWidget {
         fontFamily: GoogleFonts.poppins().fontFamily,
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
       ),
-
       debugShowCheckedModeBanner: false,
       title: 'Airline App',
       home: SplashScreen(

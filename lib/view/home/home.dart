@@ -59,7 +59,11 @@ class HomeScreen extends StatelessWidget {
                   Text(formatted, style: AppStyles.appBarText),
                   VerticalDivider(color: AppColors.white, thickness: 1),
                   Text('2 Travellers', style: AppStyles.appBarText),
-                  VerticalDivider(color: AppColors.white, thickness: 1),
+                  Obx(
+                    () => ctr.filteredData.isEmpty
+                        ? SizedBox.shrink()
+                        : VerticalDivider(color: AppColors.white, thickness: 1),
+                  ),
                   Obx(
                     () => ctr.filteredData.isEmpty
                         ? SizedBox.shrink()
