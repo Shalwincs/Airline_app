@@ -4,12 +4,14 @@ import 'package:airline_app/view/home/widget/flight_card.dart';
 import 'package:airline_app/widgets/svg.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../../constants/style.dart';
-import '../../controller/filter_controller.dart';
 import '../../controller/flight_controller.dart';
 import 'widget/bottom_buttons.dart';
 import 'widget/filter_bottom_sheet.dart';
+import 'widget/flight_path.dart';
+import 'widget/shimmer_flight_card.dart';
 import 'widget/sort_bottom_sheet.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -17,20 +19,31 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(FlightController());
-    Get.put(FlightFilterController());
+    final ctr = Get.put(FlightController());
+    final now = DateTime.now().toLocal();
+    final formatted = DateFormat('d MMMM').format(now);
+
     return Scaffold(
       backgroundColor: AppColors.grey,
       appBar: AppBar(
         backgroundColor: AppColors.secondary,
         leading: BackButton(color: AppColors.white),
-        title: Center(child: FlutterSvg(assetName: AppImages.fromAndTo)),
+        title: Center(
+          child: const FlightPathWidget(
+            from: 'NYZ',
+            to: 'CAI',
+            textStyle: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: AppColors.white,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: FlutterSvg(assetName: AppImages.editOutline),
-            onPressed: () {
-              // Navigate to settings or perform an action
-            },
+            onPressed: () {},
           ),
         ],
         bottom: PreferredSize(
@@ -43,11 +56,18 @@ class HomeScreen extends StatelessWidget {
                 spacing: 5,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('17 October', style: AppStyles.appBarText),
+                  Text(formatted, style: AppStyles.appBarText),
                   VerticalDivider(color: AppColors.white, thickness: 1),
                   Text('2 Travellers', style: AppStyles.appBarText),
                   VerticalDivider(color: AppColors.white, thickness: 1),
-                  Text('25 Flights', style: AppStyles.appBarText),
+                  Obx(
+                    () => ctr.filteredData.isEmpty
+                        ? SizedBox.shrink()
+                        : Text(
+                            '${ctr.filteredData.length} Flights',
+                            style: AppStyles.appBarText,
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -58,22 +78,35 @@ class HomeScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 50.0),
-            child: Obx(
-              () => ListView.builder(
+            child: Obx(() {
+              final listToShow = ctr.filteredData;
+
+              if (ctr.isLoading.value) {
+                return const FlightCardShimmerList(itemCount: 4);
+              }
+              if (listToShow.isEmpty) {
+                return Center(
+                  child: const Text(
+                    "No flights found",
+                    style: TextStyle(fontSize: 16, color: AppColors.lightGrey),
+                  ),
+                );
+              }
+              return ListView.builder(
                 padding: const EdgeInsets.symmetric(
                   vertical: 16,
                   horizontal: 12,
                 ),
-                itemCount: controller.flights.length,
+                itemCount: listToShow.length,
                 itemBuilder: (context, index) {
-                  final f = controller.flights[index];
+                  final f = listToShow[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: FlightCard(flight: f),
                   );
                 },
-              ),
-            ),
+              );
+            }),
           ),
           Positioned(
             left: 50,

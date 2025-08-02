@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:airline_app/services/response.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-// import 'package:timesheet_app/services/local.dart';
-// import 'package:timesheet_app/services/response.dart';
 
 enum HttpMethod { get, post }
 
@@ -13,20 +11,19 @@ class ApiHelper {
   ApiHelper(this.baseUrls) {
     client = Dio();
     client.options.baseUrl = baseUrls;
-    client.options = BaseOptions(validateStatus: (status) {
-      return status! < 500 || status == 401;
-    });
-
+    client.options = BaseOptions(
+      validateStatus: (status) {
+        return status! < 500 || status == 401;
+      },
+    );
   }
 
-  Future<HTTPResponse<T>> postmethod<T>(
-      {required String url, required HttpMethod method, var parameters}) async {
-    var header = {
-      "Content-Type": "application/json",
-      // "Authorization": LocalService.accesstoken != null
-      // ? "Bearer ${LocalService.accesstoken}"
-      // : ""
-    };
+  Future<HTTPResponse<T>> postmethod<T>({
+    required String url,
+    required HttpMethod method,
+    var parameters,
+  }) async {
+    var header = {"Content-Type": "application/json"};
     String methodName = '$method';
     List<String> parts = methodName.split('.');
     String methods = parts[1].toUpperCase();
@@ -58,18 +55,22 @@ class ApiHelper {
           print('DATA              : ${response.data}');
         }
         return HTTPResponse(
-            isSuccessfull: true, message: 'success', data: response.data);
+          isSuccessfull: true,
+          message: 'success',
+          data: response.data,
+        );
       } else {
         if (kDebugMode) {
           print('API HITTING FAILED.....DATA NOT FOUND');
         }
         return HTTPResponse(
-            isSuccessfull: false,
-            data: response.data,
-            message: kDebugMode
-                ? getErrorMessage(response.data)
-                : 'invalid response please try again later',
-            status: response.statusCode);
+          isSuccessfull: false,
+          data: response.data,
+          message: kDebugMode
+              ? getErrorMessage(response.data)
+              : 'invalid response please try again later',
+          status: response.statusCode,
+        );
       }
     } on HttpException {
       if (kDebugMode) {
@@ -81,15 +82,18 @@ class ApiHelper {
         print('API HITTING FAILED.....SOCKET EXCEPTION');
       }
       return HTTPResponse(
-          isSuccessfull: false,
-          message: 'unable to reach internet please try again later ');
+        isSuccessfull: false,
+        message: 'unable to reach internet please try again later ',
+      );
     } on FormatException {
       if (kDebugMode) {
         print('API HITTING FAILED.....FORMAT EXCEPTION');
       }
       return HTTPResponse(
-          isSuccessfull: false,
-          message: 'invalid response recieved from server please try again later ');
+        isSuccessfull: false,
+        message:
+            'invalid response recieved from server please try again later ',
+      );
     } on DioException catch (e) {
       if (e.response!.statusCode! >= 400 && e.response!.statusCode! <= 499) {
         if (kDebugMode) {
@@ -99,14 +103,18 @@ class ApiHelper {
           print('DATA              : ${e.response?.data}');
         }
         return HTTPResponse(
-            isSuccessfull: true, message: 'success', data: e.response?.data);
+          isSuccessfull: true,
+          message: 'success',
+          data: e.response?.data,
+        );
       } else {
         if (kDebugMode) {
           print('API HITTING FAILED.....DATA NOT FOUND');
         }
         return HTTPResponse(
-            isSuccessfull: false,
-            message:'Something went wrong please try again later');
+          isSuccessfull: false,
+          message: 'Something went wrong please try again later',
+        );
       }
     }
   }
@@ -116,5 +124,4 @@ class ApiHelper {
     if (data is Map && data['message'] is String) return data['message'];
     return 'invalid response please try again later';
   }
-
 }

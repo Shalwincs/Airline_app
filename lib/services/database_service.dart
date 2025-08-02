@@ -1,107 +1,75 @@
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 
-class DatabaseService {
+
+class FlightCacheDb {
+  static final FlightCacheDb _instance = FlightCacheDb._internal();
+  factory FlightCacheDb() => _instance;
+  FlightCacheDb._internal();
+
   static Database? _db;
 
-  /// Cached values to avoid repeated DB hits.
-  static bool alreadyLoggedIn = false;
-  static String? userId;
+  Future<Database> get db async {
+    if (_db != null) return _db!;
+    _db = await _init();
+    return _db!;
+  }
 
-  /// Initialize DB and load existing login data.
-  static Future<void> init() async {
-    if (_db != null) return;
-
-    // Get path to store the database.
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'local_service.db');
-
-    _db = await openDatabase(
-      path,
+  Future<Database> _init() async {
+    final path = await getDatabasesPath();
+    final dbPath = join(path, 'flight_cache.db');
+    return await openDatabase(
+      dbPath,
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE login_info (
+          CREATE TABLE FlightCache (
             id INTEGER PRIMARY KEY,
-            userId TEXT,
-            isLoggedIn INTEGER
+            payload TEXT NOT NULL,
+            updatedAt INTEGER NOT NULL
           )
         ''');
-        // Insert initial empty row to simplify updates
-        await db.insert('login_info', {
-          'id': 1,
-          'userId': null,
-          'isLoggedIn': 0,
-        });
       },
     );
-
-    await getLoginData();
   }
 
-  /// Set login data (marks logged in and stores userId).
-  static Future<void> setLoginData({required String kuserId}) async {
-    if (_db == null) await init();
-
-    userId = kuserId;
-    alreadyLoggedIn = true;
-
-    await _db!.insert(
-      'login_info',
+  Future<void> upsertPayload(String jsonPayload) async {
+    final database = await db;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await database.insert(
+      'FlightCache',
       {
         'id': 1,
-        'userId': kuserId,
-        'isLoggedIn': 1,
+        'payload': jsonPayload,
+        'updatedAt': now,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  /// Retrieve login data from SQLite.
-  static Future<void> getLoginData() async {
-    if (_db == null) await init();
-
-    final maps = await _db!.query(
-      'login_info',
+  Future<String?> getCachedPayload() async {
+    final database = await db;
+    final maps = await database.query(
+      'FlightCache',
       where: 'id = ?',
       whereArgs: [1],
       limit: 1,
     );
-
-    if (maps.isNotEmpty) {
-      final row = maps.first;
-      alreadyLoggedIn = (row['isLoggedIn'] as int) == 1;
-      userId = row['userId'] as String?;
-    } else {
-      alreadyLoggedIn = false;
-      userId = null;
-    }
+    if (maps.isEmpty) return null;
+    return maps.first['payload'] as String;
   }
 
-  /// Remove login data (log out).
-  static Future<void> removeLoggingData() async {
-    if (_db == null) await init();
-
-    alreadyLoggedIn = false;
-    userId = null;
-
-    await _db!.update(
-      'login_info',
-      {
-        'userId': null,
-        'isLoggedIn': 0,
-      },
+  Future<int?> getCacheTimestamp() async {
+    final database = await db;
+    final maps = await database.query(
+      'FlightCache',
+      columns: ['updatedAt'],
       where: 'id = ?',
       whereArgs: [1],
+      limit: 1,
     );
-  }
-
-  /// Optional: close DB if needed.
-  static Future<void> close() async {
-    await _db?.close();
-    _db = null;
+    if (maps.isEmpty) return null;
+    return maps.first['updatedAt'] as int;
   }
 }
